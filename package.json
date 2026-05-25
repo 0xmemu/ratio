@@ -2,6 +2,7 @@
   "name": "ratio",
   "version": "0.1.0",
   "private": true,
+    "workspaces": ["apps/*", "packages/*"],
   "description": "Production-oriented LP automation agent for Ethereum - Uniswap v3/v4",
   "scripts": {
     "dev": "turbo run dev",
