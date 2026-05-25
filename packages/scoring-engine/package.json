@@ -1,0 +1,17 @@
+{
+  "name": "@ratio/scoring-engine",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "build": "tsc", "lint": "eslint src --ext .ts" },
+  "dependencies": {
+    "@ratio/db": "workspace:*",
+    "@ratio/market-data": "workspace:*",
+    "@ratio/risk-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "typescript": "^5.4.5"
+  }
+}
