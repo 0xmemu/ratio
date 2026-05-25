@@ -94,6 +94,31 @@ services:
         condition: service_healthy
     profiles: ["app"]
 
+      vllm:
+    image: vllm/vllm-openai:latest
+    container_name: ratio-vllm
+    restart: unless-stopped
+    ports:
+      - "${LLM_PORT:-8080}:8000"
+    environment:
+      MODEL_NAME: ${LLM_MODEL:-mistralai/Mistral-7B-Instruct-v0.2}
+      TENSOR_PARALLEL_SIZE: "1"
+      MAX_MODEL_LEN: "4096"
+    command: >
+      --host 0.0.0.0
+      --port 8000
+      --model ${LLM_MODEL:-mistralai/Mistral-7B-Instruct-v0.2}
+      --max-model-len 4096
+      --dtype float16
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    profiles: ["llm"]
+
 volumes:
   postgres_data:
   redis_data:
