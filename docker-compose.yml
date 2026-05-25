@@ -1,20 +1,26 @@
 version: '3.9'
 
+# ---------------------------------------------------------------------------
+# Shared environment anchor — override per-service via env_file or environment:
+# ---------------------------------------------------------------------------
+x-app-env: &app-env
+  env_file: .env
+
 services:
   postgres:
     image: postgres:15-alpine
     container_name: ratio-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ratio
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: ratio_db
+      POSTGRES_USER: ${POSTGRES_USER:-ratio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-ratio_db}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ratio -d ratio_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ratio} -d ${POSTGRES_DB:-ratio_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,7 +30,7 @@ services:
     container_name: ratio-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
@@ -41,8 +47,12 @@ services:
     container_name: ratio-api
     restart: unless-stopped
     ports:
-      - "3000:3000"
-    env_file: .env
+      - "${APP_PORT:-3000}:${APP_PORT:-3000}"
+    <<: *app-env
+    environment:
+      # Wired from docker network — overrides any host-level DATABASE_URL / REDIS_URL in .env
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ratio}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-ratio_db}
+      REDIS_URL: redis://redis:${REDIS_PORT:-6379}
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,7 +66,10 @@ services:
       dockerfile: apps/worker/Dockerfile
     container_name: ratio-worker
     restart: unless-stopped
-    env_file: .env
+    <<: *app-env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ratio}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-ratio_db}
+      REDIS_URL: redis://redis:${REDIS_PORT:-6379}
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,7 +83,10 @@ services:
       dockerfile: apps/ops-bot/Dockerfile
     container_name: ratio-ops-bot
     restart: unless-stopped
-    env_file: .env
+    <<: *app-env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ratio}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-ratio_db}
+      REDIS_URL: redis://redis:${REDIS_PORT:-6379}
     depends_on:
       postgres:
         condition: service_healthy
