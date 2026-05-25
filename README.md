@@ -166,7 +166,7 @@ GET /audit               # Immutable audit log
 - [ ]   - Testing infrastructure: Vitest configuration with monorepo path aliases
 - [ ]     - CI/CD workflows: GitHub Actions for lint, typecheck, build, test with coverage reporting
 - [ ]   - Unit test samples: Initial test suite for @ratio/db packageengine
-- [ ] **Phase 3** — Live execution: gas engine, hot wallet ops, staged live validation, rollback logic
+- [ ] **Phase 3** — Live execution: gas engine, hot wallet ops, staged live validation, rollback logic ← **Planning complete** (see [docs/PHASE_3.md](docs/PHASE_3.md))
 - [ ] **Phase 4** — LLM lab: narrative engine, strategy-lab, constrained proposals, candidate promotion
 - [ ] **Phase 5** — v4 expansion: v4 discovery, hook classifier, v4 simulation, restricted live allowlist
 
