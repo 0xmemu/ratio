@@ -1,0 +1,74 @@
+name: Generate pnpm lockfile
+
+# Run once manually, or whenever package.json files change without a lockfile
+on:
+  push:
+    paths:
+      - '**/package.json'
+      - 'pnpm-workspace.yaml'
+    branches:
+      - main
+  workflow_dispatch: {}
+
+jobs:
+  generate-lockfile:
+    name: pnpm install & commit lockfile
+    runs-on: ubuntu-latest
+    # Only run if pnpm-lock.yaml does not yet exist or is out of date
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+          run_install: false
+
+      - name: Install dependencies (generates pnpm-lock.yaml)
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Check if lockfile changed
+        id: lockfile_check
+        run: |
+          if git diff --quiet pnpm-lock.yaml 2>/dev/null || [ ! -f pnpm-lock.yaml ]; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+          # Also check if file is new (untracked)
+          if git ls-files --error-unmatch pnpm-lock.yaml 2>/dev/null; then
+            echo "new_file=false" >> $GITHUB_OUTPUT
+          else
+            echo "new_file=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit pnpm-lock.yaml
+        if: steps.lockfile_check.outputs.changed == 'true' || steps.lockfile_check.outputs.new_file == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          git commit -m "chore: add generated pnpm-lock.yaml [skip ci]"
+          git push
+
+      - name: Switch Dockerfiles to --frozen-lockfile
+        if: steps.lockfile_check.outputs.new_file == 'true'
+        run: |
+          for f in apps/api/Dockerfile apps/worker/Dockerfile apps/ops-bot/Dockerfile; do
+            sed -i 's/--no-frozen-lockfile/--frozen-lockfile/g' "$f"
+          done
+          git add apps/api/Dockerfile apps/worker/Dockerfile apps/ops-bot/Dockerfile
+          git commit -m "chore: switch Dockerfiles to --frozen-lockfile now that pnpm-lock.yaml exists [skip ci]"
+          git push
