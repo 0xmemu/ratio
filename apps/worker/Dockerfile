@@ -27,7 +27,10 @@ COPY packages/protocol-v3/package.json ./packages/protocol-v3/
 COPY packages/protocol-v4/package.json ./packages/protocol-v4/
 COPY packages/backtest-core/package.json ./packages/backtest-core/
 
-RUN pnpm install --frozen-lockfile --filter @ratio/worker...
+# Use --no-frozen-lockfile so builds succeed before a lockfile has been committed.
+# Once you run `pnpm install` locally and commit pnpm-lock.yaml, switch this to
+# --frozen-lockfile for reproducible production builds.
+RUN pnpm install --no-frozen-lockfile --filter @ratio/worker...
 
 # ─────────────────────────────────────────────
 # Stage 2: builder
