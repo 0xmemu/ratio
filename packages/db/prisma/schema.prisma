@@ -1,0 +1,249 @@
+// Ratio — Prisma Schema (PostgreSQL)
+// Phase 2: Full decision core models
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Pool Universe ────────────────────────────────────────────────────────────
+
+model Pool {
+  id              String   @id @default(cuid())
+  address         String   @unique
+  token0          String
+  token1          String
+  token0Symbol    String
+  token1Symbol    String
+  feeTier         Int      // 500 | 3000
+  isActive        Boolean  @default(true)
+  isBlueChip      Boolean  @default(true)
+  isNewListing    Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  snapshots       PoolSnapshot[]
+  positions       Position[]
+  decisions       RebalanceDecision[]
+  scores          PoolScore[]
+  riskAssessments RiskAssessment[]
+
+  @@index([address])
+  @@index([isActive])
+}
+
+model PoolSnapshot {
+  id            String   @id @default(cuid())
+  poolId        String
+  pool          Pool     @relation(fields: [poolId], references: [id])
+  tick          Int
+  sqrtPriceX96  String   // bigint as string
+  liquidity     String   // bigint as string
+  tvlUsd        Float
+  volume24hUsd  Float
+  feesUsd24h    Float    @default(0)
+  token0Price   Float
+  token1Price   Float
+  blockNumber   BigInt
+  timestamp     DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([poolId, timestamp])
+}
+
+// ─── Scoring & Strategy ────────────────────────────────────────────────────────
+
+model PoolScore {
+  id                      String   @id @default(cuid())
+  poolId                  String
+  pool                    Pool     @relation(fields: [poolId], references: [id])
+  score                   Float
+  rank                    Int
+  profitComponent         Float
+  volumeComponent         Float
+  riskComponent           Float
+  recencyComponent        Float
+  netProfitUsd7d          Float
+  volume7dUsd             Float
+  riskScore               Float
+  daysSinceLastRebalance  Int
+  windowStartAt           DateTime
+  windowEndAt             DateTime
+  createdAt               DateTime @default(now())
+
+  @@index([poolId, createdAt])
+  @@index([rank])
+}
+
+model StrategyVersion {
+  id          String   @id @default(cuid())
+  version     String   @unique  // e.g. "v1.0.0"
+  description String?
+  config      Json     // serialized StrategyConfig
+  isActive    Boolean  @default(false)
+  activatedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  decisions   RebalanceDecision[]
+}
+
+// ─── Positions ─────────────────────────────────────────────────────────────────
+
+model Position {
+  id              String    @id @default(cuid())
+  poolId          String
+  pool            Pool      @relation(fields: [poolId], references: [id])
+  tokenId         String?   // NFT token ID from NonfungiblePositionManager
+  tickLower       Int
+  tickUpper       Int
+  liquidity       String    // bigint as string
+  capitalUsd      Float
+  bucket          String    // 'coreIncome' | 'activeBalanced' | 'layeredPositions'
+  status          String    @default("open")  // 'open' | 'closed' | 'pending'
+  entryTxHash     String?
+  exitTxHash      String?
+  entryTimestamp  DateTime  @default(now())
+  exitTimestamp   DateTime?
+  pnlUsd          Float     @default(0)
+  feesCollectedUsd Float    @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  decisions       RebalanceDecision[]
+
+  @@index([poolId, status])
+  @@index([status])
+}
+
+// ─── Decisions & Approvals ─────────────────────────────────────────────────────
+
+model RebalanceDecision {
+  id                String    @id @default(cuid())
+  poolId            String
+  pool              Pool      @relation(fields: [poolId], references: [id])
+  positionId        String?
+  position          Position? @relation(fields: [positionId], references: [id])
+  strategyVersionId String?
+  strategyVersion   StrategyVersion? @relation(fields: [strategyVersionId], references: [id])
+  action            String    // 'enter' | 'rebalance' | 'exit' | 'hold'
+  tickLower         Int
+  tickUpper         Int
+  capitalUsd        Float
+  reason            String
+  confidence        Float
+  status            String    @default("pending")  // 'pending' | 'approved' | 'rejected' | 'executed' | 'dry_run'
+  isDryRun          Boolean   @default(true)
+  policyApprovalId  String?
+  executedAt        DateTime?
+  txHash            String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  approval          Approval?
+  auditEvents       AuditEvent[]
+
+  @@index([poolId, status])
+  @@index([status, isDryRun])
+}
+
+model Approval {
+  id          String    @id @default(cuid())
+  decisionId  String    @unique
+  decision    RebalanceDecision @relation(fields: [decisionId], references: [id])
+  requestedAt DateTime  @default(now())
+  respondedAt DateTime?
+  approvedBy  String?   // Telegram user ID
+  status      String    @default("pending")  // 'pending' | 'approved' | 'rejected' | 'expired'
+  note        String?
+  expiresAt   DateTime
+
+  @@index([status])
+  @@index([expiresAt])
+}
+
+// ─── Risk ──────────────────────────────────────────────────────────────────────
+
+model RiskAssessment {
+  id                String   @id @default(cuid())
+  poolId            String
+  pool              Pool     @relation(fields: [poolId], references: [id])
+  riskScore         Float
+  drawdownPct       Float
+  concentrationPct  Float
+  volatility7d      Float
+  isAllowed         Boolean
+  reason            String?
+  createdAt         DateTime @default(now())
+
+  @@index([poolId, createdAt])
+}
+
+// ─── Simulations ───────────────────────────────────────────────────────────────
+
+model SimulationRun {
+  id              String   @id @default(cuid())
+  poolAddress     String
+  strategyName    String
+  startTimestamp  DateTime
+  endTimestamp    DateTime
+  initialCapital  Float
+  netPnlUsd       Float
+  feesEarnedUsd   Float
+  gasCostUsd      Float
+  maxDrawdownPct  Float
+  rebalanceCount  Int
+  sharpeRatio     Float
+  snapshotCount   Int
+  config          Json
+  createdAt       DateTime @default(now())
+
+  @@index([poolAddress])
+  @@index([createdAt])
+}
+
+// ─── Narratives ────────────────────────────────────────────────────────────────
+
+model NarrativeReport {
+  id             String   @id @default(cuid())
+  poolAddress    String
+  summary        String
+  recommendation String   // 'hold' | 'rebalance' | 'exit' | 'monitor'
+  reasoning      String
+  confidence     Float
+  llmModel       String
+  sandboxMode    Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  @@index([poolAddress, createdAt])
+}
+
+// ─── Audit & Observability ─────────────────────────────────────────────────────
+
+model AuditEvent {
+  id          String   @id @default(cuid())
+  eventType   String   // 'decision_created' | 'approval_requested' | 'approved' | 'rejected' | 'executed' | 'error'
+  entityType  String   // 'decision' | 'position' | 'approval' | 'pool'
+  entityId    String
+  decisionId  String?
+  decision    RebalanceDecision? @relation(fields: [decisionId], references: [id])
+  actor       String   // 'system' | 'telegram:{userId}' | 'api'
+  payload     Json?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([eventType, createdAt])
+}
+
+model ServiceHeartbeat {
+  id          String   @id @default(cuid())
+  service     String   // 'worker' | 'api' | 'ops-bot'
+  status      String   @default("ok")  // 'ok' | 'degraded' | 'down'
+  lastSeenAt  DateTime @default(now())
+  meta        Json?
+
+  @@unique([service])
+}
