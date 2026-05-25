@@ -1,7 +1,7 @@
 /**
  * @app api
  * Ratio REST API — monitoring and control plane.
- * Endpoints: /health, /pools, /scores, /positions, /decisions, /approvals
+ * Endpoints: /health, /metrics, /pools, /scores, /positions, /decisions, /approvals, /audit
  *
  * To run: pnpm --filter @ratio/api start
  */
@@ -9,12 +9,16 @@
 import Fastify from 'fastify';
 import { db, disconnectDb, heartbeat } from '@ratio/db';
 import { findAvailablePort } from '@ratio/port-utils';
+import { metricsRoute } from './routes/metrics';
 
 const PREFERRED_PORT = parseInt(process.env.APP_PORT ?? '3000', 10);
 const HOST = process.env.APP_HOST ?? '0.0.0.0';
 const DRY_RUN = process.env.EXECUTION_MODE !== 'live';
 
 const app = Fastify({ logger: process.env.NODE_ENV !== 'production' });
+
+// ---- Prometheus metrics ------------------------------------------------------
+await app.register(metricsRoute);
 
 // ---- Health ------------------------------------------------------------------
 app.get('/health', async () => ({
@@ -117,12 +121,11 @@ app.get('/audit', async (req) => {
 // ---- Startup -----------------------------------------------------------------
 const start = async () => {
   try {
-    // Jika APP_PORT sudah dipakai, otomatis cari port yang tersedia
     const PORT = await findAvailablePort(PREFERRED_PORT, 20, HOST);
-
     await app.listen({ port: PORT, host: HOST });
     await heartbeat('api', 'ok');
     console.log(`[api] Listening on ${HOST}:${PORT} (dryRun=${DRY_RUN})`);
+    console.log(`[api] Prometheus metrics available at http://${HOST}:${PORT}/metrics`);
 
     if (PORT !== PREFERRED_PORT) {
       console.warn(

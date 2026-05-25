@@ -1,92 +1,115 @@
-# =============================================================================
-# Makefile - Ratio project command shortcuts
+# Ratio — Makefile
 # Usage: make <target>
-# =============================================================================
-.PHONY: help setup install build dev clean\
-        db-generate db-migrate db-studio db-reset\
-        infra-up infra-down infra-logs\
-        start-api start-worker start-bot\
-        lint test logs
 
-help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
+.PHONY: install build test lint clean dev-up dev-down migrate seed logs
 
-# ---- Setup ------------------------------------------------------------------
-setup: ## Full first-time setup (install, infra, migrate, build)
-	bash scripts/setup.sh
-
-install: ## Install pnpm dependencies
+## ── Install ───────────────────────────────────────────────────────────────────
+install:
 	pnpm install
 
-build: ## Build all packages and apps
-	pnpm build
+## ── Build ─────────────────────────────────────────────────────────────────────
+build:
+	pnpm turbo build
 
-dev: ## Start all services in dev/watch mode
-	pnpm dev
+## ── Test ──────────────────────────────────────────────────────────────────────
+test:
+	pnpm turbo test
 
-clean: ## Remove all build artifacts and node_modules
-	find . -name 'node_modules' -type d -prune -exec rm -rf {} +
-	find . -name 'dist' -type d -prune -exec rm -rf {} +
-	find . -name '*.tsbuildinfo' -delete
+test-watch:
+	pnpm turbo test -- --watch
 
-# ---- Database ---------------------------------------------------------------
-db-generate: ## Generate Prisma client
-	pnpm --filter @ratio/db exec prisma generate
+## ── Lint ──────────────────────────────────────────────────────────────────────
+lint:
+	pnpm turbo lint
 
-db-migrate: ## Apply pending Prisma migrations
-	pnpm --filter @ratio/db exec prisma migrate deploy
+format:
+	pnpm turbo format
 
-db-migrate-dev: ## Create + apply new migration (dev only)
+## ── Database ──────────────────────────────────────────────────────────────────
+migrate:
 	pnpm --filter @ratio/db exec prisma migrate dev
 
-db-studio: ## Open Prisma Studio (browser DB UI)
+migrate-deploy:
+	pnpm --filter @ratio/db exec prisma migrate deploy
+
+seed:
+	pnpm --filter @ratio/db exec prisma db seed
+
+studio:
 	pnpm --filter @ratio/db exec prisma studio
 
-db-reset: ## Reset database (DESTRUCTIVE - deletes all data)
-	@echo "WARNING: This will delete ALL data. Press Ctrl+C to cancel."
-	@sleep 3
-	pnpm --filter @ratio/db exec prisma migrate reset --force
+## ── Docker dev ────────────────────────────────────────────────────────────────
+dev-up:
+	docker compose up -d
 
-# ---- Infrastructure ---------------------------------------------------------
-infra-up: ## Start postgres + redis via docker-compose
-	docker compose up -d postgres redis
-
-infra-down: ## Stop all docker-compose services
+dev-down:
 	docker compose down
 
-infra-logs: ## Follow logs from all containers
+dev-down-clean:
+	docker compose down -v --remove-orphans
+
+logs:
 	docker compose logs -f
 
-infra-ps: ## Show running containers
-	docker compose ps
+logs-api:
+	docker compose logs -f api
 
-# ---- Services ---------------------------------------------------------------
-start-api: ## Start the REST API (port from APP_PORT, default 3000)
-	pnpm --filter @ratio/api start
+logs-worker:
+	docker compose logs -f worker
 
-start-worker: ## Start the background cron worker
-	pnpm --filter @ratio/worker start
+logs-bot:
+	docker compose logs -f ops-bot
 
-start-bot: ## Start the Telegram ops bot
-	pnpm --filter @ratio/ops-bot start
+## ── Restart individual services ───────────────────────────────────────────────
+restart-api:
+	docker compose restart api
 
-# ---- Quality ----------------------------------------------------------------
-lint: ## Run ESLint across all packages
-	pnpm lint
+restart-worker:
+	docker compose restart worker
 
-test: ## Run all tests
-	pnpm test
+restart-bot:
+	docker compose restart ops-bot
 
-# ---- Logs & Health ----------------------------------------------------------
-health: ## Check API health endpoint
-	curl -s http://localhost:$${APP_PORT:-3000}/health | python3 -m json.tool
+## ── E2E / Sepolia ─────────────────────────────────────────────────────────────
+sepolia-dry:
+	EXECUTION_MODE=dry-run pnpm --filter @ratio/execution-engine exec ts-node scripts/sepolia-e2e.ts
 
-scores: ## Show latest pool scores from API
-	curl -s http://localhost:$${APP_PORT:-3000}/scores | python3 -m json.tool
+sepolia-live:
+	EXECUTION_MODE=live pnpm --filter @ratio/execution-engine exec ts-node scripts/sepolia-e2e.ts
 
-pending: ## Show pending decisions from API
-	curl -s http://localhost:$${APP_PORT:-3000}/decisions?status=pending | python3 -m json.tool
+## ── Metrics ───────────────────────────────────────────────────────────────────
+metrics:
+	curl -s http://localhost:3000/metrics
 
-positions: ## Show open positions from API
-	curl -s http://localhost:$${APP_PORT:-3000}/positions?status=open | python3 -m json.tool
+health:
+	curl -s http://localhost:3000/health | jq .
+
+health-services:
+	curl -s http://localhost:3000/health/services | jq .
+
+## ── Clean ─────────────────────────────────────────────────────────────────────
+clean:
+	pnpm turbo clean
+	rm -rf node_modules apps/*/node_modules packages/*/node_modules
+
+## ── Help ──────────────────────────────────────────────────────────────────────
+help:
+	@echo "Ratio Makefile targets:"
+	@echo "  install           Install all dependencies"
+	@echo "  build             Build all packages"
+	@echo "  test              Run all tests"
+	@echo "  lint              Lint all packages"
+	@echo "  migrate           Run Prisma migrations (dev)"
+	@echo "  migrate-deploy    Run Prisma migrations (production)"
+	@echo "  seed              Seed the database"
+	@echo "  dev-up            Start Docker dev stack"
+	@echo "  dev-down          Stop Docker dev stack"
+	@echo "  logs              Follow all service logs"
+	@echo "  restart-api       Restart API container"
+	@echo "  restart-worker    Restart worker container"
+	@echo "  restart-bot       Restart ops-bot container"
+	@echo "  sepolia-dry       Run Sepolia E2E in dry-run mode"
+	@echo "  sepolia-live      Run Sepolia E2E in live mode"
+	@echo "  metrics           Fetch Prometheus metrics"
+	@echo "  health            Fetch /health endpoint"
+	@echo "  clean             Remove all build artifacts"
