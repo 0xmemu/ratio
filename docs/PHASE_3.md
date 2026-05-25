@@ -9,8 +9,7 @@ Phase 3 focuses on implementing live transaction execution capabilities for the 
 ## Objectives
 
 1. **Gas Estimation Engine**: Implement accurate gas estimation and optimization
-2. **Hot Wallet Operations**: Secure hot wallet management for live transactions
-3. **Staged Live Validation**: Multi-stage validation before execution
+## Status: **IN PROGRESS** 🚧3. **Staged Live Validation**: Multi-stage validation before execution
 4. **Rollback Logic**: Transaction rollback and error recovery
 5. **Position Execution**: Uniswap v3 position management via smart contracts
 
@@ -351,23 +350,20 @@ UNISWAP_V3_FACTORY=0x1F98431c8aD98523631AE4a59f267346ea31F984
 
 ## Milestones
 
-### Milestone 1: Gas & Wallet (Week 1-2)
-- [x] Design gas estimation service
-- [ ] Implement `GasEstimator`
-- [ ] Implement `WalletManager`
-- [ ] Unit tests for gas & wallet
-- [ ] Integration with execution engine
+### Milestone 1: Gas & Wallet (Week 1-2) ✅ COMPLETE- [x] Design gas estimation service ✅
+- [ ] Implement `GasEstimator` ✅
+- [ ] Implement `WalletManager` ✅
+- [ ] Unit tests for gas & wallet ✅
+- [ ] Integration with execution engine ✅
 
-### Milestone 2: Validation & Safety (Week 3-4)
-- [ ] Implement `ValidationPipeline`
+### Milestone 2: Validation & Safety (Week 3-4) 🚧 IN PROGRESS- [ ] Implement `ValidationPipeline` 🚧
 - [ ] Build safety limit checks
 - [ ] Create approval workflow
 - [ ] Transaction simulation testing
 - [ ] Testnet deployment
 
-### Milestone 3: Execution & Rollback (Week 5-6)
-- [ ] Implement `PositionExecutor`
-- [ ] Build `RollbackManager`
+### Milestone 3: Execution & Rollback (Week 5-6) 🚧 IN PROGRESS- [ ] Implement `PositionExecutor` 🚧
+- [ ] Build `RollbackManager` 🚧
 - [ ] Contract integration (Uniswap v3)
 - [ ] End-to-end testing on testnet
 - [ ] Staging environment validation
