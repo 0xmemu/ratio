@@ -221,3 +221,11 @@ export class ExecutionEngine {
 }
 
 export default ExecutionEngine;
+
+
+// Phase 3: Live Execution Modules
+export * from './gas';
+export * from './wallet';
+export * from './validation';
+export * from './rollback';
+export * from './position';
