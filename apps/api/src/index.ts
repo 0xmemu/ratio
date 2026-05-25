@@ -8,8 +8,9 @@
 
 import Fastify from 'fastify';
 import { db, disconnectDb, heartbeat } from '@ratio/db';
+import { findAvailablePort } from '@ratio/port-utils';
 
-const PORT = parseInt(process.env.APP_PORT ?? '3000', 10);
+const PREFERRED_PORT = parseInt(process.env.APP_PORT ?? '3000', 10);
 const HOST = process.env.APP_HOST ?? '0.0.0.0';
 const DRY_RUN = process.env.EXECUTION_MODE !== 'live';
 
@@ -116,9 +117,18 @@ app.get('/audit', async (req) => {
 // ---- Startup -----------------------------------------------------------------
 const start = async () => {
   try {
+    // Jika APP_PORT sudah dipakai, otomatis cari port yang tersedia
+    const PORT = await findAvailablePort(PREFERRED_PORT, 20, HOST);
+
     await app.listen({ port: PORT, host: HOST });
     await heartbeat('api', 'ok');
     console.log(`[api] Listening on ${HOST}:${PORT} (dryRun=${DRY_RUN})`);
+
+    if (PORT !== PREFERRED_PORT) {
+      console.warn(
+        `[api] PERHATIAN: Port ${PREFERRED_PORT} sudah dipakai, beralih ke port ${PORT}.`,
+      );
+    }
   } catch (err) {
     console.error('[api] Failed to start:', err);
     process.exit(1);
