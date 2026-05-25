@@ -1,0 +1,44 @@
+# Dependencies — never copy local node_modules into build context
+node_modules
+**/node_modules
+
+# Build artifacts
+dist
+**/dist
+.turbo
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Version control
+.git
+.gitignore
+
+# Editor & OS
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+coverage
+**/*.test.ts
+**/*.spec.ts
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Documentation
+docs
+*.md
+!README.md
+
+# CI
+.github
