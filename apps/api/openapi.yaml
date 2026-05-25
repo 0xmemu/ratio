@@ -1,0 +1,377 @@
+openapi: 3.0.3
+info:
+  title: Ratio LP Automation API
+  version: 1.0.0
+  description: |
+    Production-oriented LP automation agent for Ethereum — Uniswap v3/v4 concentrated liquidity management.
+    
+    This API provides control plane endpoints for monitoring, managing, and approving automated liquidity positions.
+  contact:
+    name: Ratio Development Team
+  license:
+    name: Private — All Rights Reserved
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: https://api.ratio.local
+    description: Staging environment
+  - url: https://api.ratio.production
+    description: Production environment
+
+tags:
+  - name: Health
+    description: Service health and status
+  - name: Pools
+    description: Pool data and analytics
+  - name: Scores
+    description: Composite scoring for pools
+  - name: Positions
+    description: Liquidity position management
+  - name: Decisions
+    description: Strategy decisions and rebalancing
+  - name: Approvals
+    description: Manual approval workflow
+  - name: Audit
+    description: Audit trail and events
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Service health check
+      description: Returns service health status and dry-run flag
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  mode:
+                    type: string
+                    enum: [dry_run, live]
+                    example: dry_run
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /health/services:
+    get:
+      tags:
+        - Health
+      summary: Per-service heartbeats
+      description: Health status for database, Redis, and external services
+      responses:
+        '200':
+          description: Service health details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  database:
+                    type: string
+                    enum: [ok, error]
+                  redis:
+                    type: string
+                    enum: [ok, error]
+                  rpc:
+                    type: string
+                    enum: [ok, error]
+
+  /pools:
+    get:
+      tags:
+        - Pools
+      summary: Get pool universe
+      description: Returns active/true/false pool data with snapshots
+      parameters:
+        - name: active
+          in: query
+          schema:
+            type: boolean
+          description: Filter by active status
+      responses:
+        '200':
+          description: List of pools
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pool'
+
+  /pools/{address}:
+    get:
+      tags:
+        - Pools
+      summary: Get single pool with snapshots & positions
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^0x[a-fA-F0-9]{40}$'
+      responses:
+        '200':
+          description: Pool details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoolDetail'
+        '404':
+          description: Pool not found
+
+  /scores:
+    get:
+      tags:
+        - Scores
+      summary: Latest composite scores
+      description: Returns most recent composite pool scores
+      responses:
+        '200':
+          description: List of scores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Score'
+
+  /positions:
+    get:
+      tags:
+        - Positions
+      summary: Get positions
+      description: Returns liquidity positions with status filtering
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, closed, pending]
+          description: Filter by position status
+      responses:
+        '200':
+          description: List of positions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Position'
+
+  /decisions:
+    get:
+      tags:
+        - Decisions
+      summary: Rebalance decisions
+      description: Returns strategy decisions with status filtering
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected, executed]
+          description: Filter by decision status
+      responses:
+        '200':
+          description: List of decisions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Decision'
+
+  /approvals:
+    get:
+      tags:
+        - Approvals
+      summary: Get approval records
+      description: Returns manual approval records
+      responses:
+        '200':
+          description: List of approval records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Approval'
+
+  /audit:
+    get:
+      tags:
+        - Audit
+      summary: Immutable audit log
+      description: Returns audit events (paginated)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Audit events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditEvent'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+components:
+  schemas:
+    Pool:
+      type: object
+      properties:
+        id:
+          type: string
+        address:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+        token0:
+          type: string
+        token1:
+          type: string
+        fee:
+          type: integer
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    PoolDetail:
+      allOf:
+        - $ref: '#/components/schemas/Pool'
+        - type: object
+          properties:
+            snapshots:
+              type: array
+              items:
+                type: object
+                properties:
+                  liquidity:
+                    type: string
+                  volume24h:
+                    type: string
+                  feesUSD:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+
+    Score:
+      type: object
+      properties:
+        id:
+          type: string
+        poolId:
+          type: string
+        compositeScore:
+          type: number
+        liquidityScore:
+          type: number
+        volumeScore:
+          type: number
+        volatilityScore:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+
+    Position:
+      type: object
+      properties:
+        id:
+          type: string
+        poolId:
+          type: string
+        nftId:
+          type: integer
+        tickLower:
+          type: integer
+        tickUpper:
+          type: integer
+        liquidity:
+          type: string
+        status:
+          type: string
+          enum: [open, closed, pending]
+        createdAt:
+          type: string
+          format: date-time
+
+    Decision:
+      type: object
+      properties:
+        id:
+          type: string
+        poolId:
+          type: string
+        action:
+          type: string
+          enum: [open, close, rebalance]
+        status:
+          type: string
+          enum: [pending, approved, rejected, executed]
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Approval:
+      type: object
+      properties:
+        id:
+          type: string
+        decisionId:
+          type: string
+        approvedBy:
+          type: string
+        approvedAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+
+    AuditEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        eventType:
+          type: string
+        userId:
+          type: string
+        metadata:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
