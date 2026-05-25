@@ -2,9 +2,17 @@
  * @package db
  * Prisma client singleton for use across all apps and packages.
  * Import { db } from '@ratio/db' in any service.
+ *
+ * NOTE: validateEnv() is called at module load time — this ensures
+ * that missing required variables throw early (before any DB I/O).
  */
-
 import { PrismaClient } from '@prisma/client';
+import { getEnv, validateEnv } from './env';
+
+// Validate all required env vars at startup. Throws if anything is missing.
+validateEnv();
+
+const env = getEnv();
 
 // Singleton pattern: reuse across hot-reloads in development
 const globalForPrisma = globalThis as unknown as {
@@ -15,12 +23,17 @@ export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
     log:
-      process.env.NODE_ENV === 'development'
+      env.NODE_ENV === 'development'
         ? ['query', 'error', 'warn']
         : ['error'],
+    datasources: {
+      db: {
+        url: env.DATABASE_URL,
+      },
+    },
   });
 
-if (process.env.NODE_ENV !== 'production') {
+if (env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = db;
 }
 
@@ -41,6 +54,10 @@ export type {
 } from '@prisma/client';
 
 export { Prisma } from '@prisma/client';
+
+// Re-export env utilities so app-level code can import from '@ratio/db'
+export { getEnv, validateEnv, getPublicEnvSummary } from './env';
+export type { RatioEnv } from './env';
 
 /**
  * Graceful shutdown helper — call in process exit handlers.
