@@ -1,0 +1,16 @@
+{
+  "name": "@ratio/llm-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "build": "tsc", "lint": "eslint src --ext .ts" },
+  "dependencies": {
+    "openai": "^4.47.1",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "typescript": "^5.4.5"
+  }
+}
