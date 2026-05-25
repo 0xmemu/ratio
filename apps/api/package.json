@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ratio/db": "workspace:*",
+    "@ratio/port-utils": "workspace:*",
     "fastify": "^4.26.2"
   },
   "devDependencies": {
