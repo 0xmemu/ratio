@@ -1,0 +1,19 @@
+{
+  "name": "@ratio/execution-engine",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "build": "tsc", "lint": "eslint src --ext .ts" },
+  "dependencies": {
+    "@ratio/db": "workspace:*",
+    "@ratio/allocation-engine": "workspace:*",
+    "@ratio/policy-engine": "workspace:*",
+    "@ratio/protocol-v3": "workspace:*",
+    "ethers": "^6.11.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "typescript": "^5.4.5"
+  }
+}
