@@ -162,7 +162,10 @@ GET /audit               # Immutable audit log
 ## Implementation Phases
 
 - [x] **Phase 1** — Foundation: monorepo, DB, v3 adapter, market ingest, risk engine, dry-run, Telegram
-- [x] **Phase 2** — Decision core: scoring engine, allocator, strategy registry, approvals, policy engine, execution engine
+- [x] **Phase 2** — Decision core: scoring engine, allocator, strategy registry, approvals, policy engine, execution  ← **Sprint 2 complete**
+- [ ]   - Testing infrastructure: Vitest configuration with monorepo path aliases
+- [ ]     - CI/CD workflows: GitHub Actions for lint, typecheck, build, test with coverage reporting
+- [ ]   - Unit test samples: Initial test suite for @ratio/db packageengine
 - [ ] **Phase 3** — Live execution: gas engine, hot wallet ops, staged live validation, rollback logic
 - [ ] **Phase 4** — LLM lab: narrative engine, strategy-lab, constrained proposals, candidate promotion
 - [ ] **Phase 5** — v4 expansion: v4 discovery, hook classifier, v4 simulation, restricted live allowlist
