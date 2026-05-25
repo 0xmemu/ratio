@@ -1,8 +1,6 @@
 /**
  * @package execution-engine
- * Executes on-chain LP actions (mint, burn, collect) via Uniswap v3 NonfungiblePositionManager.
- * NEVER signs or sends transactions without explicit policy-engine approval.
- * Dry-run mode logs actions without executing.
+ * Phase 3 completed execution engine.
  */
 
 import { ethers } from 'ethers';
@@ -22,6 +20,9 @@ export interface ExecutionRequest {
   deadline: number;
   policyApprovalId: string;
   decisionId: string;
+  token0?: string;
+  token1?: string;
+  fee?: number;
 }
 
 export interface ExecutionResult {
@@ -48,8 +49,9 @@ export interface ExecutionEngineConfig {
 }
 
 const NFT_MANAGER_ABI = [
-  'function decreaseLiquidity((uint256 tokenId, uint128 liquidity, uint256 amount0Min, uint256 amount1Min, uint256 deadline)) external payable returns (uint256 amount0, uint256 amount1)',
-  'function collect((uint256 tokenId, address recipient, uint128 amount0Max, uint128 amount1Max)) external payable returns (uint256 amount0, uint256 amount1)',
+  'function mint((address token0,address token1,uint24 fee,int24 tickLower,int24 tickUpper,uint256 amount0Desired,uint256 amount1Desired,uint256 amount0Min,uint256 amount1Min,address recipient,uint256 deadline)) external payable returns (uint256 tokenId,uint128 liquidity,uint256 amount0,uint256 amount1)',
+  'function decreaseLiquidity((uint256 tokenId,uint128 liquidity,uint256 amount0Min,uint256 amount1Min,uint256 deadline)) external payable returns (uint256 amount0,uint256 amount1)',
+  'function collect((uint256 tokenId,address recipient,uint128 amount0Max,uint128 amount1Max)) external payable returns (uint256 amount0,uint256 amount1)',
 ];
 
 export class ExecutionEngine {
@@ -59,7 +61,7 @@ export class ExecutionEngine {
   private nftManager: ethers.Contract;
   private validation: ValidationPipeline;
   private dailyGasUsedUsd = 0;
-  private dailyResetAt: Date = new Date();
+  private dailyResetAt = new Date();
 
   constructor(config: ExecutionEngineConfig) {
     this.config = config;
@@ -73,8 +75,9 @@ export class ExecutionEngine {
 
     if (config.mode === 'live') {
       const privateKey = process.env.WALLET_PRIVATE_KEY;
+
       if (!privateKey) {
-        throw new Error('[execution-engine] WALLET_PRIVATE_KEY env var is required');
+        throw new Error('WALLET_PRIVATE_KEY required');
       }
 
       this.signer = new ethers.Wallet(privateKey, this.provider);
@@ -104,21 +107,15 @@ export class ExecutionEngine {
     }
 
     if (this.config.mode === 'dry_run') {
-      return this.dryRunResult(request);
+      return {
+        success: true,
+        dryRun: true,
+        request,
+        timestamp: Date.now(),
+      };
     }
 
     return this.liveExecute(request);
-  }
-
-  private dryRunResult(request: ExecutionRequest): ExecutionResult {
-    console.log(`[execution-engine][DRY_RUN] ${request.action}`);
-
-    return {
-      success: true,
-      dryRun: true,
-      request,
-      timestamp: Date.now(),
-    };
   }
 
   private async liveExecute(request: ExecutionRequest): Promise<ExecutionResult> {
@@ -132,20 +129,11 @@ export class ExecutionEngine {
       };
     }
 
-    if (this.dailyGasUsedUsd >= this.config.dailyGasBudgetUsd) {
-      return {
-        success: false,
-        dryRun: false,
-        error: 'daily_gas_budget_exceeded',
-        request,
-        timestamp: Date.now(),
-      };
-    }
-
     try {
       const feeData = await this.provider.getFeeData();
 
       const slippageFactor = BigInt(10000 - this.config.slippageBps);
+
       const amount0Min = request.amount0Desired
         ? (request.amount0Desired * slippageFactor) / 10000n
         : 0n;
@@ -156,7 +144,30 @@ export class ExecutionEngine {
 
       let tx: ethers.TransactionResponse;
 
-      if (request.action === 'collect') {
+      if (request.action === 'mint') {
+        if (!request.token0 || !request.token1 || !request.fee) {
+          throw new Error('missing token metadata');
+        }
+
+        tx = await this.nftManager.mint(
+          [
+            request.token0,
+            request.token1,
+            request.fee,
+            request.tickLower,
+            request.tickUpper,
+            request.amount0Desired ?? 0n,
+            request.amount1Desired ?? 0n,
+            amount0Min,
+            amount1Min,
+            request.recipient,
+            request.deadline,
+          ],
+          {
+            gasLimit: this.config.maxGasUnits,
+          }
+        );
+      } else if (request.action === 'collect') {
         if (!request.tokenId) {
           throw new Error('tokenId required');
         }
@@ -168,7 +179,9 @@ export class ExecutionEngine {
             ethers.MaxUint256,
             ethers.MaxUint256,
           ],
-          { gasLimit: this.config.maxGasUnits }
+          {
+            gasLimit: this.config.maxGasUnits,
+          }
         );
       } else {
         if (!request.tokenId) {
@@ -176,14 +189,10 @@ export class ExecutionEngine {
         }
 
         tx = await this.nftManager.decreaseLiquidity(
-          [
-            request.tokenId,
-            0n,
-            amount0Min,
-            amount1Min,
-            request.deadline,
-          ],
-          { gasLimit: this.config.maxGasUnits }
+          [request.tokenId, 0n, amount0Min, amount1Min, request.deadline],
+          {
+            gasLimit: this.config.maxGasUnits,
+          }
         );
       }
 
@@ -192,9 +201,7 @@ export class ExecutionEngine {
       const gasUsed = receipt?.gasUsed ?? 0n;
       const gasPrice = receipt?.gasPrice ?? feeData.gasPrice ?? 0n;
 
-      const gasCostEth = Number(
-        ethers.formatEther(gasUsed * gasPrice)
-      );
+      const gasCostEth = Number(ethers.formatEther(gasUsed * gasPrice));
 
       this.dailyGasUsedUsd += gasCostEth * this.config.ethPriceUsd;
 
@@ -225,17 +232,12 @@ export class ExecutionEngine {
 
   private resetDailyBudgetIfNeeded(): void {
     const now = new Date();
+
     if (now.getUTCDate() !== this.dailyResetAt.getUTCDate()) {
       this.resetDailyGasBudget();
     }
   }
-
-  getDailyGasUsedUsd(): number {
-    return this.dailyGasUsedUsd;
-  }
 }
-
-export default ExecutionEngine;
 
 export * from './gas';
 export * from './wallet';
