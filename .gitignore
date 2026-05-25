@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Turbo
+.turbo/
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Database
+*.sqlite
+*.db
+
+# Docker volumes
+.docker-data/
+
+# Simulation output
+output/*.json
+output/*.csv
+
+# Secrets - NEVER commit these
+*.key
+*.pem
+*.p12
+secrets/
+.secrets/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Prisma
+prisma/migrations/dev/
