@@ -1,0 +1,28 @@
+# prometheus.yml — example scrape config for Ratio
+# Place this file on your Prometheus server and reload config.
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: ratio-api
+    static_configs:
+      - targets:
+          - 'localhost:3000'   # or your API server IP:PORT
+    metrics_path: /metrics
+    scheme: http
+    # If API is behind basic auth, add:
+    # basic_auth:
+    #   username: prometheus
+    #   password: <secret>
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'localhost:9093'   # Alertmanager address
+
+# --- Example alert rules (save as ratio-alerts.yml and reference here) --------
+# rule_files:
+#   - 'ratio-alerts.yml'

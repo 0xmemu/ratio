@@ -1,0 +1,52 @@
+# ratio-alerts.yml — Prometheus alerting rules for Ratio
+# Reference this file in prometheus.yml under rule_files:
+
+groups:
+  - name: ratio.operations
+    rules:
+
+      - alert: RatioPendingDecisionsHigh
+        expr: ratio_pending_decisions_total > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of pending decisions"
+          description: "{{ $value }} decisions are awaiting approval for >5m."
+
+      - alert: RatioNoHealthyServices
+        expr: ratio_services_healthy_total == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "All Ratio services are unhealthy"
+          description: "No service heartbeat detected in the last 5 minutes."
+
+      - alert: RatioLiveModeDetected
+        expr: ratio_dry_run_mode == 0
+        for: 0m
+        labels:
+          severity: info
+        annotations:
+          summary: "Ratio is running in LIVE mode"
+          description: "Execution mode switched to LIVE — on-chain transactions will be sent."
+
+      - alert: RatioHighFailureRate
+        expr: |
+          increase(ratio_decisions_failed_total[1h]) > 3
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High execution failure rate"
+          description: "More than 3 decision failures in the last 1h."
+
+      - alert: RatioNoOpenPositions
+        expr: ratio_open_positions_total == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No open positions"
+          description: "No open positions detected for 30 minutes — may indicate worker is paused."

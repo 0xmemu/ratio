@@ -1,0 +1,105 @@
+{
+  "title": "Ratio — Operations Dashboard",
+  "uid": "ratio-ops-v1",
+  "schemaVersion": 38,
+  "refresh": "30s",
+  "time": { "from": "now-3h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Execution Mode",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "ratio_dry_run_mode",
+          "legendFormat": "dry_run"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "mappings": [
+          { "type": "value", "value": "0", "result": { "text": "LIVE", "color": "red" } },
+          { "type": "value", "value": "1", "result": { "text": "DRY RUN", "color": "green" } }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "title": "Open Positions",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "targets": [
+        { "expr": "ratio_open_positions_total", "legendFormat": "positions" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Pending Approvals",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "targets": [
+        { "expr": "ratio_pending_decisions_total", "legendFormat": "pending" }
+      ],
+      "options": {
+        "colorMode": "background",
+        "thresholds": {
+          "steps": [
+            { "value": 0, "color": "green" },
+            { "value": 3, "color": "yellow" },
+            { "value": 5, "color": "red" }
+          ]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Active Pools",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "ratio_active_pools_total", "legendFormat": "pools" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Services Healthy",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "targets": [
+        { "expr": "ratio_services_healthy_total", "legendFormat": "healthy" }
+      ],
+      "options": {
+        "colorMode": "background",
+        "thresholds": {
+          "steps": [
+            { "value": 0, "color": "red" },
+            { "value": 2, "color": "yellow" },
+            { "value": 3, "color": "green" }
+          ]
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Decision Flow (cumulative)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        { "expr": "ratio_decisions_approved_total", "legendFormat": "approved" },
+        { "expr": "ratio_decisions_denied_total", "legendFormat": "denied" },
+        { "expr": "ratio_decisions_executed_total", "legendFormat": "executed" },
+        { "expr": "ratio_decisions_failed_total", "legendFormat": "failed" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Positions Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        { "expr": "ratio_open_positions_total", "legendFormat": "open positions" }
+      ]
+    }
+  ]
+}
