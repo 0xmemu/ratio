@@ -8,6 +8,8 @@
 - Operations runbook
 - Prometheus monitoring config
 - Kubernetes deployment manifest
+- Kubernetes secrets template
+- Security review checklist
 
 ## Remaining
 
@@ -17,3 +19,4 @@
 - Wallet balance alerting
 - Advanced integration tests
 - Production metrics dashboard
+- Grafana dashboards
