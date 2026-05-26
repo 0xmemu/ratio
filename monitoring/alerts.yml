@@ -1,0 +1,18 @@
+groups:
+  - name: ratio-alerts
+    rules:
+      - alert: HighGasUsage
+        expr: gas_usage > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: High gas usage detected
+
+      - alert: ExecutionFailures
+        expr: execution_failures > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Excessive execution failures detected
