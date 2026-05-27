@@ -21,6 +21,7 @@ import { AllocationEngine } from '@ratio/allocation-engine';
 import { loadDefaultPolicy } from '@ratio/policy-engine';
 import { MarketDataService, PoolMarketData } from '@ratio/market-data';
 import { startHeartbeat } from './heartbeat';
+import { runLLMAnalyzeJob } from './jobs/llm-analyze';
 
 const DRY_RUN = process.env.EXECUTION_MODE !== 'live';
 const CYCLE_MS = parseInt(process.env.WORKER_CYCLE_MS ?? '60000', 10);
@@ -52,6 +53,8 @@ console.log(`[worker] Starting... DRY_RUN=${DRY_RUN}, cycle=${CYCLE_MS}ms, capit
 startHeartbeat(db);
 
 let running = false;
+let cycleCount = 0;
+const LLM_ANALYZE_INTERVAL = 30;
 
 // ---- helpers ----------------------------------------------------------------
 
@@ -206,9 +209,18 @@ async function runCycle(): Promise<void> {
     }
 
     const elapsed = Date.now() - cycleStart;
+    cycleCount++;
     console.log(
-      `[worker] Cycle complete in ${elapsed}ms — ${newDecisions} new decision(s) created (PENDING_APPROVAL)`,
+      `[worker] Cycle ${cycleCount} complete in ${elapsed}ms — ${newDecisions} new decision(s) created (PENDING_APPROVAL)`,
     );
+
+    // LLM advisory analysis — runs every 30 cycles
+    if (cycleCount % LLM_ANALYZE_INTERVAL === 0) {
+      console.log('[worker] Triggering LLM advisory analysis...');
+      void runLLMAnalyzeJob().catch((err) =>
+        console.error('[worker] LLM analyze job failed:', err),
+      );
+    }
 
     await heartbeat(SERVICE, 'ok');
   } catch (err) {

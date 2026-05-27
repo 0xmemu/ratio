@@ -2,7 +2,8 @@
 
 > Production-oriented LP automation agent for Ethereum — Uniswap v3/v4 concentrated liquidity management
 
-![Status](https://img.shields.io/badge/status-phase%202%20decision%20core-blue)
+![Status](https://img.shields.io/badge/status-phase%204%20llm%20lab-purple)
+![Tests](https://img.shields.io/badge/tests-104%20passing-brightgreen)
 ![Mode](https://img.shields.io/badge/default%20mode-dry--run-yellow)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-green)
 ![pnpm](https://img.shields.io/badge/pnpm-9-orange)
@@ -69,7 +70,7 @@ make dev
 | Service | Command | Default Port | Description |
 |---------|---------|-------------|-------------|
 | **API** | `make start-api` | 3000 (auto-fallback) | REST control plane |
-| **Worker** | `make start-worker` | — | Cron scheduler: ingest/score/decide/execute |
+| **Worker** | `make start-worker` | — | Cron scheduler: ingest/score/decide/execute/llm-analyze |
 | **Ops Bot** | `make start-bot` | — | Telegram approval gate |
 
 All services start with `pnpm dev` or individually via `make start-*`.
@@ -113,7 +114,7 @@ All secrets via environment variables. **Never commit secrets to git.** See `.en
 ratio/
 ├── apps/
 │   ├── api/               # REST control plane (:3000)
-│   ├── worker/            # Cron scheduler (ingest/score/decide/execute)
+│   ├── worker/            # Cron scheduler (ingest/score/decide/execute/llm-analyze)
 │   ├── ops-bot/           # Telegram human-in-the-loop approval gate
 │   ├── simulator/         # Dry-run replay engine
 │   └── strategy-lab/      # LLM strategy generation sandbox
@@ -127,6 +128,7 @@ ratio/
 │   ├── execution-engine/  # Tx build & submit (dry_run/live)
 │   ├── strategy-engine/   # Strategy registry & lifecycle
 │   ├── allocation-engine/ # Capital allocation
+│   ├── llm-lab/           # Phase 4: AI strategy orchestration & learning
 │   ├── llm-gateway/       # Unified LLM interface (sandbox only)
 │   └── ...
 ├── scripts/
@@ -144,6 +146,7 @@ ratio/
 | `score` | Every 15 min | Risk assessment + composite pool scoring |
 | `decide` | Every 30 min | Strategy decisions + approval record creation |
 | `execute` | Every 60 sec | Execute approved decisions (live gate) |
+| `llm-analyze` | Every 30 min | LLM narrative analysis and strategy evaluation |
 
 ## API Endpoints
 
@@ -163,10 +166,11 @@ GET /audit               # Immutable audit log
 
 - [x] **Phase 1** — Foundation: monorepo, DB, v3 adapter, market ingest, risk engine, dry-run, Telegram
 - [x] **Phase 2** — Decision core: scoring engine, allocator, strategy registry, approvals, policy engine, execution  ← **Sprint 2 complete**
-- [ ]   - Testing infrastructure: Vitest configuration with monorepo path aliases
-- [ ]     - CI/CD workflows: GitHub Actions for lint, typecheck, build, test with coverage reporting
-- [ ]   - Unit test samples: Initial test suite for @ratio/db packageengine
-- [ ] **Phase 3** - Live execution: gas engine, hot wallet ops, staged live validation, rollback logic ← **In Progress** (see [docs/PHASE_3.md](docs/PHASE_3.md))- [ ] **Phase 4** — LLM lab: narrative engine, strategy-lab, constrained proposals, candidate promotion
+- [x]   - Testing infrastructure: Vitest configuration with monorepo path aliases
+- [x]     - CI/CD workflows: GitHub Actions for lint, typecheck, build, test with coverage reporting
+- [x]   - Unit test samples: Initial test suite for @ratio/db packageengine
+- [x] **Phase 3** — Live execution: gas estimation, wallet management, validation pipeline, position execution, rollback management, metrics, Telegram failure notifier, Sepolia E2E script — ✅ **COMPLETE** (see [docs/PHASE_3_PROGRESS.md](docs/PHASE_3_PROGRESS.md))
+- [x] **Phase 4** — LLM lab: MarketAnalyzer, StrategyAgent, Backtester, SimulationLab, RiskAgent, DecisionEngine, PolicyEngine, VectorMemory, PerformanceRecall, ReinforcementEngine, AutonomousOrchestrator — ✅ **COMPLETE** (104 tests, see [docs/PHASE_4.md](docs/PHASE_4.md))
 - [ ] **Phase 5** — v4 expansion: v4 discovery, hook classifier, v4 simulation, restricted live allowlist
 
 ## Security

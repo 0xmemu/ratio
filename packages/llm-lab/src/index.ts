@@ -14,6 +14,7 @@ export * from './simulation-lab';
 // Stage 3: AI Strategy Layer
 export * from './risk-agent';
 export * from './decision-engine';
+export * from './policy-engine';
 
 // Stage 4: Memory & Learning
 export * from './vector-memory';
@@ -36,3 +37,4 @@ export { default as DecisionEngine } from './decision-engine';
 export { default as VectorMemory } from './vector-memory';
 export { default as PerformanceRecall } from './performance-recall';
 export { default as ReinforcementEngine } from './reinforcement-engine';
+export { default as PolicyEngine } from './policy-engine';
