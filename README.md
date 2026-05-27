@@ -2,8 +2,8 @@
 
 > Production-oriented LP automation agent for Ethereum — Uniswap v3/v4 concentrated liquidity management
 
-![Status](https://img.shields.io/badge/status-phase%204%20llm%20lab-purple)
-![Tests](https://img.shields.io/badge/tests-104%20passing-brightgreen)
+![Status](https://img.shields.io/badge/status-phase%205%20complete-brightgreen)
+![Tests](https://img.shields.io/badge/tests-148%20passing-brightgreen)
 ![Mode](https://img.shields.io/badge/default%20mode-dry--run-yellow)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-green)
 ![pnpm](https://img.shields.io/badge/pnpm-9-orange)
@@ -129,6 +129,7 @@ ratio/
 │   ├── strategy-engine/   # Strategy registry & lifecycle
 │   ├── allocation-engine/ # Capital allocation
 │   ├── llm-lab/           # Phase 4: AI strategy orchestration & learning
+│   ├── protocol-v4/       # Phase 5: v4 discovery, hooks, simulation, allowlist
 │   ├── llm-gateway/       # Unified LLM interface (sandbox only)
 │   └── ...
 ├── scripts/
@@ -147,6 +148,7 @@ ratio/
 | `decide` | Every 30 min | Strategy decisions + approval record creation |
 | `execute` | Every 60 sec | Execute approved decisions (live gate) |
 | `llm-analyze` | Every 30 min | LLM narrative analysis and strategy evaluation |
+| `v4-discover` | Every 60 min | Uniswap v4 pool discovery + hook cataloging |
 
 ## API Endpoints
 
@@ -171,7 +173,7 @@ GET /audit               # Immutable audit log
 - [x]   - Unit test samples: Initial test suite for @ratio/db packageengine
 - [x] **Phase 3** — Live execution: gas estimation, wallet management, validation pipeline, position execution, rollback management, metrics, Telegram failure notifier, Sepolia E2E script — ✅ **COMPLETE** (see [docs/PHASE_3_PROGRESS.md](docs/PHASE_3_PROGRESS.md))
 - [x] **Phase 4** — LLM lab: MarketAnalyzer, StrategyAgent, Backtester, SimulationLab, RiskAgent, DecisionEngine, PolicyEngine, VectorMemory, PerformanceRecall, ReinforcementEngine, AutonomousOrchestrator — ✅ **COMPLETE** (104 tests, see [docs/PHASE_4.md](docs/PHASE_4.md))
-- [ ] **Phase 5** — v4 expansion: v4 discovery, hook classifier, v4 simulation, restricted live allowlist
+- [x] **Phase 5** — v4 expansion: V4DiscoveryService, HookClassifier, V4Simulator, V4Allowlist — ✅ **COMPLETE** (44 tests)
 
 ## Security
 

@@ -22,6 +22,7 @@ import { loadDefaultPolicy } from '@ratio/policy-engine';
 import { MarketDataService, PoolMarketData } from '@ratio/market-data';
 import { startHeartbeat } from './heartbeat';
 import { runLLMAnalyzeJob } from './jobs/llm-analyze';
+import { runV4DiscoveryJob } from './jobs/v4-discover';
 
 const DRY_RUN = process.env.EXECUTION_MODE !== 'live';
 const CYCLE_MS = parseInt(process.env.WORKER_CYCLE_MS ?? '60000', 10);
@@ -55,6 +56,7 @@ startHeartbeat(db);
 let running = false;
 let cycleCount = 0;
 const LLM_ANALYZE_INTERVAL = 30;
+const V4_DISCOVER_INTERVAL = 60;
 
 // ---- helpers ----------------------------------------------------------------
 
@@ -219,6 +221,14 @@ async function runCycle(): Promise<void> {
       console.log('[worker] Triggering LLM advisory analysis...');
       void runLLMAnalyzeJob().catch((err) =>
         console.error('[worker] LLM analyze job failed:', err),
+      );
+    }
+
+    // V4 pool discovery — runs every 60 cycles
+    if (cycleCount % V4_DISCOVER_INTERVAL === 0) {
+      console.log('[worker] Triggering v4 pool discovery...');
+      void runV4DiscoveryJob().catch((err) =>
+        console.error('[worker] V4 discovery job failed:', err),
       );
     }
 

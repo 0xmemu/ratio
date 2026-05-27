@@ -36,6 +36,7 @@ export default defineConfig({
       '@ratio/llm-gateway': path.resolve(__dirname, './packages/llm-gateway/src'),
       '@ratio/llm-lab': path.resolve(__dirname, './packages/llm-lab/src'),
       '@ratio/protocol-v3': path.resolve(__dirname, './packages/protocol-v3/src'),
+      '@ratio/protocol-v4': path.resolve(__dirname, './packages/protocol-v4/src'),
       '@ratio/port-utils': path.resolve(__dirname, './packages/port-utils/src'),
     },
   },

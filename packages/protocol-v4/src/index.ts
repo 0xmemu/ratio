@@ -49,3 +49,12 @@ export function canExecuteLive(mode: V4Mode, hook: HookProfile): boolean {
   if (mode !== 'restricted_live') return false;
   return isHookSafeForLive(hook);
 }
+
+export { V4DiscoveryService } from './v4-discovery';
+export type { V4PoolDiscovery, DiscoveryFilter, DiscoveryResult, RawPoolCreatedEvent } from './v4-discovery';
+export { HookClassifier } from './hook-classifier';
+export type { HookCategory, HookClassification } from './hook-classifier';
+export { V4Simulator } from './v4-simulation';
+export type { V4SimulationInput, V4SimulationResult, V4SimulationSummary } from './v4-simulation';
+export { V4Allowlist } from './v4-allowlist';
+export type { AllowlistEntry, AllowlistCheck } from './v4-allowlist';
