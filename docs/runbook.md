@@ -175,3 +175,187 @@ Telegram commands:
 - `/decisions` — last 10 decisions
 - `/approve <id>` — approve a decision (live path)
 - `/deny <id>` — deny a decision
+
+---
+
+## 7. Phase 4 — LLM Lab Operations
+
+The LLM Lab runs advisory analysis on top-scored pools. It never executes transactions.
+
+```bash
+# Check LLM analysis results
+curl http://localhost:3000/llm/insights?limit=10
+
+# Check RL weights (strategy optimization)
+curl http://localhost:3000/llm/rl-weights
+
+# Check vector memory size (strategy embeddings)
+curl http://localhost:3000/llm/memory-stats
+
+# Force a manual LLM analysis run
+curl -X POST http://localhost:3000/llm/analyze
+```
+
+### LLM Lab Pipeline
+
+```
+MarketAnalyzer → StrategyAgent → Backtester → SimulationLab → RiskAgent → DecisionEngine
+                                                                              ↓
+                                VectorMemory ← PerformanceRecall ← ReinforcementEngine
+```
+
+### Interpreting LLM Output
+
+- `confidence >= 70` → strong signal, likely worth considering
+- `confidence 40–69` → moderate, review market conditions manually
+- `confidence < 40` → weak signal, skip
+- `riskLevel = critical` → ALWAYS vetoed regardless of other signals
+
+---
+
+## 8. Phase 5 — v4 Operations
+
+Uniswap v4 pools are in DISCOVERY MODE by default. No v4 transactions are executed without explicit allowlisting.
+
+```bash
+# Check v4 discovery results
+curl http://localhost:3000/v4/pools?limit=20
+
+# Check hook classifications
+curl http://localhost:3000/v4/hooks
+
+# Check allowlist status
+curl http://localhost:3000/v4/allowlist
+
+# Simulate a v4 position (dry-run only)
+curl -X POST http://localhost:3000/v4/simulate -H 'Content-Type: application/json' \
+  -d '{"poolId":"0x...","capitalUsd":5000,"holdingPeriodDays":30}'
+```
+
+### V4 Hook Risk Levels
+
+| Risk Score | Trust Level | Action |
+|-----------|-------------|--------|
+| 0.0–0.2 | allowlisted | safe for restricted live |
+| 0.2–0.4 | audited | simulation only |
+| 0.4–0.7 | analyzed | monitor, no execution |
+| 0.7–1.0 | unknown | avoid entirely |
+
+### Adding a v4 Pool to Allowlist
+
+1. Pool must pass HookClassifier with risk < 0.3
+2. Pool must have > $250k TVL and > $50k daily volume
+3. Manual review by operator
+4. Add via `V4Allowlist.allowPool(poolId)`
+
+---
+
+## 9. Incident Response
+
+### Severity Levels
+
+| Level | Definition | Response Time | Notification |
+|-------|-----------|---------------|--------------|
+| **P0 — Critical** | Wallet at risk, funds being drained, unauthorized tx | Immediate | Telegram + call |
+| **P1 — High** | Execution failures piling up, auto-pause triggered | < 15 min | Telegram |
+| **P2 — Medium** | Gas spike above ceiling, single position stuck | < 1 hour | Telegram |
+| **P3 — Low** | LLM anomaly, v4 discovery stall, metrics gap | < 4 hours | Slack/email |
+
+### P0 — Critical Response
+
+1. **Stop worker immediately:**
+   ```bash
+   docker compose -f docker-compose.production.yml stop worker
+   # OR: kill -SIGTERM <worker_pid>
+   ```
+
+2. **Check audit log for unauthorized actions:**
+   ```bash
+   curl http://localhost:3000/audit?limit=100 | python3 -m json.tool
+   ```
+
+3. **If wallet is compromised:**
+   - Transfer remaining funds to cold wallet via Etherscan/MEV blocker
+   - Revoke all token approvals at https://revoke.cash
+
+4. **Post-incident:**
+   - Rotate `WALLET_PRIVATE_KEY`
+   - Review and update validation rules
+   - File incident report in `docs/incidents/YYYY-MM-DD.md`
+
+### P1 — High Response
+
+1. Check failure reason:
+   ```bash
+   docker compose -f docker-compose.production.yml logs worker --tail=100
+   ```
+
+2. Common causes:
+   - RPC endpoint throttled → switch fallback RPC
+   - Gas too high → increase gas ceiling or wait
+   - Insufficient balance → refill wallet
+   - Pool illiquid → skip pool, resume worker
+
+3. Resume after fix:
+   ```bash
+   curl -X POST http://localhost:3000/admin/resume
+   ```
+
+---
+
+## 10. Production Deployment
+
+### Full Deployment (first time or major update)
+
+```bash
+bash scripts/production-deploy.sh
+```
+
+### Pre-flight Check Only (no deploy)
+
+```bash
+bash scripts/production-deploy.sh --check
+```
+
+### Restart Services Only
+
+```bash
+bash scripts/production-deploy.sh --restart
+```
+
+### View Logs
+
+```bash
+# All services
+docker compose -f docker-compose.production.yml logs -f
+
+# Specific service
+docker compose -f docker-compose.production.yml logs -f worker
+```
+
+### DB Backup
+
+```bash
+docker compose -f docker-compose.production.yml exec postgres \
+  pg_dump -U ratio ratio > backups/ratio_$(date +%Y%m%d_%H%M%S).sql
+```
+
+### Applying Migrations
+
+```bash
+docker compose -f docker-compose.production.yml run --rm api \
+  sh -c "pnpm --filter @ratio/db exec prisma migrate deploy"
+```
+
+---
+
+## 11. Maintenance Windows
+
+| Task | Frequency | Command |
+|------|-----------|---------|
+| DB backup | Daily | `bash scripts/backup-db.sh` (create if missing) |
+| Secrets scan | Weekly | `bash scripts/git-secrets-check.sh` |
+| Dependency audit | Weekly | `pnpm audit` |
+| Log rotation check | Monthly | `du -sh /var/lib/docker/containers/*/*.log` |
+| Grafana dashboard review | Monthly | Check http://localhost:3001 for stale panels |
+| Sepolia E2E test | Before each live deployment | `pnpm --filter @ratio/execution-engine exec ts-node scripts/sepolia-e2e.ts` |

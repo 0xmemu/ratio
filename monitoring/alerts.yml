@@ -16,3 +16,43 @@ groups:
           severity: critical
         annotations:
           summary: Excessive execution failures detected
+
+      - alert: LLMDecisionAnomaly
+        expr: rate(ratio_llm_decisions_total[30m]) > 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: LLM Lab generating unusually high decision rate
+
+      - alert: V4HookRiskDetected
+        expr: ratio_v4_hook_risk_score > 0.7
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: High-risk Uniswap v4 hook detected — review immediately
+
+      - alert: ServiceHeartbeatMissing
+        expr: ratio_services_healthy_total < 3
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: One or more Ratio services are not heartbeating
+
+      - alert: WalletBalanceLow
+        expr: ratio_wallet_eth_balance < 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Hot wallet ETH balance below 0.05 — refill to avoid tx failures
+
+      - alert: ExecutionModeNotLive
+        expr: ratio_dry_run_mode == 1
+        for: 1h
+        labels:
+          severity: info
+        annotations:
+          summary: Execution mode is still DRY_RUN after 1 hour

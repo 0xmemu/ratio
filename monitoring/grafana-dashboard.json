@@ -1,0 +1,95 @@
+{
+  "title": "Ratio — Operations Dashboard v2",
+  "uid": "ratio-ops-v2",
+  "schemaVersion": 38,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "title": "Execution Mode", "type": "stat",
+      "gridPos": { "h": 4, "w": 3, "x": 0, "y": 0 },
+      "targets": [{ "expr": "ratio_dry_run_mode", "legendFormat": "mode" }],
+      "options": {
+        "colorMode": "background",
+        "mappings": [
+          { "type": "value", "value": "0", "result": { "text": "LIVE", "color": "red" } },
+          { "type": "value", "value": "1", "result": { "text": "DRY RUN", "color": "green" } }
+        ]
+      }
+    },
+    {
+      "id": 2, "title": "Open Positions", "type": "stat",
+      "gridPos": { "h": 4, "w": 3, "x": 3, "y": 0 },
+      "targets": [{ "expr": "ratio_open_positions_total", "legendFormat": "open" }]
+    },
+    {
+      "id": 3, "title": "Pending Approvals", "type": "stat",
+      "gridPos": { "h": 4, "w": 3, "x": 6, "y": 0 },
+      "targets": [{ "expr": "ratio_pending_decisions_total", "legendFormat": "pending" }],
+      "options": {
+        "colorMode": "background",
+        "thresholds": { "steps": [{ "value": 0, "color": "green" }, { "value": 3, "color": "yellow" }, { "value": 5, "color": "red" }] }
+      }
+    },
+    {
+      "id": 4, "title": "Services Healthy", "type": "stat",
+      "gridPos": { "h": 4, "w": 3, "x": 9, "y": 0 },
+      "targets": [{ "expr": "ratio_services_healthy_total", "legendFormat": "up" }],
+      "options": {
+        "colorMode": "background",
+        "thresholds": { "steps": [{ "value": 0, "color": "red" }, { "value": 2, "color": "yellow" }, { "value": 3, "color": "green" }] }
+      }
+    },
+    {
+      "id": 5, "title": "Active Pools (v3)", "type": "stat",
+      "gridPos": { "h": 4, "w": 3, "x": 12, "y": 0 },
+      "targets": [{ "expr": "ratio_active_pools_total", "legendFormat": "v3" }]
+    },
+    {
+      "id": 6, "title": "V4 Hooks Cataloged", "type": "stat",
+      "gridPos": { "h": 4, "w": 3, "x": 15, "y": 0 },
+      "targets": [{ "expr": "ratio_v4_hooks_cataloged_total", "legendFormat": "v4 hooks" }]
+    },
+    {
+      "id": 7, "title": "LLM Lab — Daily Insights", "type": "stat",
+      "gridPos": { "h": 4, "w": 3, "x": 18, "y": 0 },
+      "targets": [{ "expr": "ratio_llm_insights_generated_total", "legendFormat": "insights" }]
+    },
+    {
+      "id": 10, "title": "Decision Flow (cumulative)", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        { "expr": "ratio_decisions_approved_total", "legendFormat": "approved" },
+        { "expr": "ratio_decisions_denied_total", "legendFormat": "denied" },
+        { "expr": "ratio_decisions_executed_total", "legendFormat": "executed" },
+        { "expr": "ratio_decisions_failed_total", "legendFormat": "failed" }
+      ]
+    },
+    {
+      "id": 11, "title": "Positions Over Time", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [{ "expr": "ratio_open_positions_total", "legendFormat": "open" }]
+    },
+    {
+      "id": 12, "title": "Gas Price (gwei)", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 12 },
+      "targets": [
+        { "expr": "ratio_gas_price_gwei", "legendFormat": "current" },
+        { "expr": "ratio_gas_ceiling_gwei", "legendFormat": "ceiling" }
+      ]
+    },
+    {
+      "id": 13, "title": "LLM Lab — Strategy Confidence", "type": "gauge",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 12 },
+      "targets": [{ "expr": "ratio_llm_strategy_confidence_avg", "legendFormat": "avg confidence" }],
+      "options": {
+        "thresholds": { "steps": [{ "value": 0, "color": "red" }, { "value": 50, "color": "yellow" }, { "value": 75, "color": "green" }] }
+      }
+    },
+    {
+      "id": 14, "title": "V4 Hook Risk Score Distribution", "type": "bargauge",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 12 },
+      "targets": [{ "expr": "ratio_v4_hook_risk_score", "legendFormat": "high risk" }]
+    }
+  ]
+}

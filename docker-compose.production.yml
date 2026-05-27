@@ -1,44 +1,176 @@
 version: '3.9'
 
+x-common: &common
+  restart: unless-stopped
+  networks:
+    - ratio-net
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "3"
+
 services:
+  # ── Infrastructure ──────────────────────────────────────────
   postgres:
-    image: postgres:16
-    restart: unless-stopped
+    <<: *common
+    image: postgres:16-alpine
     environment:
       POSTGRES_DB: ratio
-      POSTGRES_USER: ratio
-      POSTGRES_PASSWORD: change-me
+      POSTGRES_USER: ${POSTGRES_USER:-ratio}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "ratio", "-d", "ratio"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    secrets:
+      - postgres_password
 
   redis:
-    image: redis:7
-    restart: unless-stopped
-    command: redis-server --appendonly yes
+    <<: *common
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
-      - '6379:6379'
+      - '127.0.0.1:6379:6379'
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  execution-engine:
+  # ── Monitoring ──────────────────────────────────────────────
+  prometheus:
+    <<: *common
+    image: prom/prometheus:v2.52.0
+    ports:
+      - '127.0.0.1:9090:9090'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+
+  grafana:
+    <<: *common
+    image: grafana/grafana:10.4.0
+    ports:
+      - '127.0.0.1:3001:3000'
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD_FILE: /run/secrets/grafana_password
+      GF_INSTALL_PLUGINS: ''
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana-dashboard.json:/etc/grafana/provisioning/dashboards/ratio.json:ro
+    secrets:
+      - grafana_password
+
+  alertmanager:
+    <<: *common
+    image: prom/alertmanager:v0.27.0
+    ports:
+      - '127.0.0.1:9093:9093'
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+
+  loki:
+    <<: *common
+    image: grafana/loki:2.9.0
+    ports:
+      - '127.0.0.1:3100:3100'
+    volumes:
+      - loki_data:/loki
+
+  # ── Ratio Services ──────────────────────────────────────────
+  api:
+    <<: *common
     build:
       context: .
-    restart: unless-stopped
+      dockerfile: apps/api/Dockerfile
+    user: '1000:1000'
     env_file:
       - .env.production
-    depends_on:
-      - postgres
-      - redis
+    environment:
+      NODE_ENV: production
+      APP_PORT: '3000'
     ports:
-      - '3000:3000'
+      - '127.0.0.1:3000:3000'
     healthcheck:
-      test: ['CMD', 'node', '-e', "process.exit(0)"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *common
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    user: '1000:1000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "worker"]
       interval: 30s
       timeout: 10s
       retries: 3
+    depends_on:
+      api:
+        condition: service_healthy
+
+  ops-bot:
+    <<: *common
+    build:
+      context: .
+      dockerfile: apps/ops-bot/Dockerfile
+    user: '1000:1000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "ops-bot"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      api:
+        condition: service_healthy
+
+networks:
+  ratio-net:
+    driver: bridge
 
 volumes:
   postgres_data:
   redis_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  grafana_password:
+    file: ./secrets/grafana_password.txt

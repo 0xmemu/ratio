@@ -1,0 +1,43 @@
+route:
+  receiver: telegram-critical
+  group_by: ['alertname', 'severity']
+  group_wait: 30s
+  group_interval: 2m
+  repeat_interval: 15m
+
+  routes:
+    - match:
+        severity: critical
+      receiver: telegram-critical
+      continue: true
+    - match:
+        severity: warning
+      receiver: telegram-warning
+
+receivers:
+  - name: telegram-critical
+    telegram_configs:
+      - bot_token_file: /etc/alertmanager/telegram_bot_token
+        chat_id: 0
+        parse_mode: HTML
+        message: |
+          <b>🚨 {{ .Status | toUpper }} — {{ .GroupLabels.alertname }}</b>
+
+          {{ range .Alerts }}
+          <b>Alert:</b> {{ .Annotations.summary }}
+          <b>Severity:</b> {{ .Labels.severity }}
+          <b>Started:</b> {{ .StartsAt | since }}
+          {{ if .Annotations.description }}<i>{{ .Annotations.description }}</i>{{ end }}
+          {{ end }}
+
+  - name: telegram-warning
+    telegram_configs:
+      - bot_token_file: /etc/alertmanager/telegram_bot_token
+        chat_id: 0
+        parse_mode: HTML
+        message: |
+          ⚠️ <b>{{ .GroupLabels.alertname }}</b>
+
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ end }}
