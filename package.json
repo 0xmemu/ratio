@@ -10,9 +10,9 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "db:migrate": "pnpm --filter @ratio/db migrate:dev",
-    "db:generate": "pnpm --filter @ratio/db generate",
-    "db:studio": "pnpm --filter @ratio/db studio",
+    "db:migrate": "pnpm --filter @ratio/db db:migrate",
+    "db:generate": "pnpm --filter @ratio/db db:generate",
+    "db:studio": "pnpm --filter @ratio/db db:studio",
     "clean": "turbo run clean && find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
   },
   "devDependencies": {
